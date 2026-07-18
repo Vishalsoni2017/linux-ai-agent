@@ -76,7 +76,10 @@ fi
 
 # ── Install Python dependencies ──────────────────────────────────────
 info "Installing Python dependencies..."
-python3 -m pip install --user -q -r "${REPO_DIR}/requirements.txt"
+if ! python3 -m pip install --user -q -r "${REPO_DIR}/requirements.txt" 2>/dev/null; then
+    info "Standard pip install failed. Retrying with --break-system-packages..."
+    python3 -m pip install --user --break-system-packages -q -r "${REPO_DIR}/requirements.txt" || die "Failed to install dependencies."
+fi
 ok "Dependencies installed."
 
 # ── Create launcher script ───────────────────────────────────────────
