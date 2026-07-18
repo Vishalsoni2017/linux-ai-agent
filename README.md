@@ -73,7 +73,7 @@ scp -r linux-agent/ user@your-server-ip:~/
 Or clone/download directly on the server if you have git:
 
 ```bash
-git clone https://github.com/your-repo/linux-agent.git ~/linux-agent
+git clone https://github.com/Vishalsoni2017/linux-ai-agent.git ~/linux-agent
 ```
 
 ### Step 2 — Install Python dependency
