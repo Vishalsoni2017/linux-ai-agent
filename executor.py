@@ -21,6 +21,7 @@ import sys
 import threading
 import subprocess
 from typing import Tuple
+from config import log_audit
 
 # ── Dry-run mode ────────────────────────────────────────────────────────────────
 DRY_RUN: bool = os.environ.get("LINUX_AGENT_DRY_RUN", "").strip() in ("1", "true", "yes")
@@ -162,11 +163,22 @@ def run_command(command: str, use_sudo: bool = True) -> Tuple[bool, str, str]:
                 f"  ✗ Command failed (exit code {proc.returncode}).", Color.RED
             ))
 
-        return success, "".join(stdout_lines), "".join(stderr_lines)
+        stdout_content = "".join(stdout_lines)
+        stderr_content = "".join(stderr_lines)
+        log_audit(
+            "COMMAND_EXECUTE",
+            f"Command: {full_cmd}\n"
+            f"Exit Code: {proc.returncode}\n"
+            f"Success: {success}\n"
+            f"Stdout:\n{stdout_content}\n"
+            f"Stderr:\n{stderr_content}"
+        )
+        return success, stdout_content, stderr_content
 
     except Exception as e:
         msg = str(e)
         print(colorize(f"  ✗ Execution error: {msg}", Color.RED))
+        log_audit("COMMAND_ERROR", f"Command: {full_cmd}\nException: {msg}")
         return False, "", msg
 
 
@@ -186,12 +198,15 @@ def execute_commands(
     """
     from ai_engine import fix_error
 
+    log_audit("PLAN_START", f"OS: {os_name}\nPackage Manager: {package_manager}\nCommands:\n" + "\n".join(commands))
+
     total = len(commands)
     for idx, cmd in enumerate(commands, start=1):
         print(colorize(f"\n[{idx}/{total}]", Color.BOLD), end=" ")
 
         approved = ask_permission(cmd)
         if not approved:
+            log_audit("COMMAND_SKIP", f"Command: {cmd}")
             continue
 
         success, stdout, stderr = run_command(cmd)

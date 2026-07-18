@@ -145,6 +145,13 @@ Return ONLY the raw bash script content. No markdown, no explanation."""
 
     ui.success(f"Script written to {script_path} and made executable.")
 
+    config.log_audit(
+        "SCRIPT_WRITE",
+        f"Path: {script_path}\n"
+        f"Description: {description}\n"
+        f"Content:\n{script_content}"
+    )
+
     # Offer to add to cron
     cron_ans = input("  Add this script to a cron job now? [y/n]: ").strip().lower()
     if cron_ans in ("y", "yes"):

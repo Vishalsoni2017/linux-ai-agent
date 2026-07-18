@@ -266,6 +266,16 @@ def add_vhost():
     from executor import execute_commands
     execute_commands(commands, os_name, pkg_mgr)
 
+    config.log_audit(
+        "VHOST_WRITE",
+        f"Server: {server}\n"
+        f"Domain: {domain}\n"
+        f"Document Root: {doc_root}\n"
+        f"SSL Mode: {ssl_mode}\n"
+        f"Config Path: {conf_path}\n"
+        f"Config Content:\n{vhost_config}"
+    )
+
     ui.success(f"Virtual host for {domain} is live!")
     if ssl_mode == "letsencrypt":
         ui.info("SSL certificate obtained via Let's Encrypt.")

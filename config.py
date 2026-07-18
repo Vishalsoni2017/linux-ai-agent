@@ -256,3 +256,23 @@ def get_lifetime_usage() -> dict:
     return load_config().get(
         "lifetime_tokens", {"prompt": 0, "completion": 0, "total": 0, "calls": 0}
     )
+
+
+# ── Audit Logging ───────────────────────────────────────────────────────────────
+
+def log_audit(event_type: str, details: str):
+    """
+    Append an audit log entry to ~/.linux_agent/audit.log with a timestamp.
+    Used to track command execution, generated scripts, and vhost configuration blocks
+    for compliance and audit purposes.
+    """
+    import datetime
+    ensure_config_dir()
+    log_file = CONFIG_DIR / "audit.log"
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    entry = f"[{timestamp}] [{event_type}]\n{details}\n" + ("=" * 80) + "\n"
+    try:
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(entry)
+    except Exception:
+        pass
