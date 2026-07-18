@@ -18,7 +18,7 @@ import json
 import re
 import time
 import requests
-from config import get, get_model, record_usage
+from config import get, get_model, record_usage, CREATOR_NAME, CREATOR_GITHUB
 
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -108,8 +108,8 @@ def _call_api(
     headers = {
         "Authorization":  f"Bearer {api_key}",
         "Content-Type":   "application/json",
-        "HTTP-Referer":   "https://github.com/linux-agent",
-        "X-Title":        "Linux Agentic Tool",
+        "HTTP-Referer":   CREATOR_GITHUB,
+        "X-Title":        f"Linux Agentic Tool by {CREATOR_NAME}",
     }
 
     payload = {
@@ -119,7 +119,7 @@ def _call_api(
         "max_tokens":  max_tokens,
     }
 
-    last_error = None
+    last_error = RuntimeError("API request failed after all retries.")
     for attempt in range(1, _MAX_RETRIES + 1):
         try:
             resp = requests.post(

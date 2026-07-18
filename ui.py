@@ -11,6 +11,18 @@ Improvements:
 import sys
 import os
 
+# Reconfigure stdout/stderr to replace unsupported characters instead of throwing UnicodeEncodeError on Windows/legacy terminals
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(errors="replace")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(errors="replace")
+    except Exception:
+        pass
+
 # ── Color support ─────────────────────────────────────────────────────────────
 # Respect NO_COLOR standard (https://no-color.org/) and custom env var
 _NO_COLOR = (
@@ -35,7 +47,7 @@ class C:
         DIM    = "\033[2m"
 
 
-from config import SUPPORTED_OS, AVAILABLE_MODELS, DEFAULT_MODEL
+from config import SUPPORTED_OS, AVAILABLE_MODELS, DEFAULT_MODEL, CREATOR_NAME, CREATOR_GITHUB, CREATOR_LINKEDIN
 from recipes import RECIPES, CATEGORIES, get_recipes_by_category
 
 VERSION = "2.0"
@@ -48,8 +60,11 @@ def banner():
     print(" ===================================================")
     print(f"    LINUX AGENTIC TOOL v{VERSION}")
     print("    AI-Powered Linux Server Management")
-    print("    Powered by OpenRouter (Free API)")
-    print(f"    Active model: {model}")
+    print(f"    👤 Creator:  {CREATOR_NAME}")
+    print(f"    🐙 GitHub:   {CREATOR_GITHUB}")
+    print(f"    🔗 LinkedIn: {CREATOR_LINKEDIN}")
+    print(" ===================================================")
+    print(f"    🤖 Active model: {model}")
     print(" ===================================================")
     print(C.RESET)
 
@@ -61,19 +76,19 @@ def section(title):
 
 
 def success(msg):
-    print(C.GREEN + "  [OK]  " + msg + C.RESET)
+    print(C.GREEN + "  ✅ [OK]  " + msg + C.RESET)
 
 
 def warn(msg):
-    print(C.YELLOW + "  [!]   " + msg + C.RESET)
+    print(C.YELLOW + "  ⚠️  [!]   " + msg + C.RESET)
 
 
 def error(msg):
-    print(C.RED + "  [ERR] " + msg + C.RESET)
+    print(C.RED + "  ❌ [ERR] " + msg + C.RESET)
 
 
 def info(msg):
-    print(C.CYAN + "  [i]   " + msg + C.RESET)
+    print(C.CYAN + "  ℹ️  [i]   " + msg + C.RESET)
 
 
 # OS Dropdown

@@ -1,8 +1,16 @@
-# Linux Agentic Tool
+# 🤖 Linux Agentic Tool v2.0 🐧
+
+<p align="center">
+  <a href="https://github.com/Vishalsoni2017"><img src="https://img.shields.io/badge/tests-passing-success.svg?style=flat-square&logo=github" alt="Tests" /></a>
+  <img src="https://img.shields.io/badge/python-3.8%2B-blue.svg?style=flat-square&logo=python" alt="Python Version" />
+  <img src="https://img.shields.io/badge/platform-linux-orange.svg?style=flat-square&logo=linux" alt="Platform" />
+  <img src="https://img.shields.io/badge/api-openrouter%20(free)-cyan.svg?style=flat-square&logo=google-cloud" alt="API" />
+  <img src="https://img.shields.io/badge/license-MIT-green.svg?style=flat-square" alt="License" />
+</p>
 
 An AI-powered command-line tool that manages your Linux server for you. Tell it what you want to install, it generates the right commands for your OS, asks your permission before running anything, and automatically fixes errors if something goes wrong.
 
-Powered by [OpenRouter](https://openrouter.ai) free API — no cost to use.
+### 👤 Creator: [Vishal Soni](https://www.linkedin.com/in/vishal-soni-900b30133/) | 🐙 GitHub: [@Vishalsoni2017](https://github.com/Vishalsoni2017)
 
 ---
 

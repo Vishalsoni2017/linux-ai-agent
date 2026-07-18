@@ -12,7 +12,16 @@ Improvements:
 
 import json
 import os
+import base64
 from pathlib import Path
+
+# ── Creator Signature (Protected against simple find-and-replace) ──────────────
+CREATOR_NAME = "Vishal Soni"
+_CREATOR_GH_B64 = "aHR0cHM6Ly9naXRodWIuY29tL1Zpc2hhbHNvbmkyMDE3"
+_CREATOR_LI_B64 = "aHR0cHM6Ly93d3cubGlua2VkaW4uY29tL2luL3Zpc2hhbC1zb25pLTkwMGIzMDEzMy8="
+
+CREATOR_GITHUB = base64.b64decode(_CREATOR_GH_B64).decode("utf-8")
+CREATOR_LINKEDIN = base64.b64decode(_CREATOR_LI_B64).decode("utf-8")
 
 CONFIG_DIR  = Path.home() / ".linux_agent"
 CONFIG_FILE = CONFIG_DIR / "config.json"

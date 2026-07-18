@@ -366,6 +366,15 @@ EXAMPLES:
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 def main():
+    # ── Integrity Check ──────────────────────────────────────────────────────────
+    expected_gh = "https://github.com/Vishalsoni2017"
+    expected_li = "https://www.linkedin.com/in/vishal-soni-900b30133/"
+    if (getattr(config, "CREATOR_NAME", "") != "Vishal Soni" or 
+        getattr(config, "CREATOR_GITHUB", "") != expected_gh or 
+        getattr(config, "CREATOR_LINKEDIN", "") != expected_li):
+        print("\n\033[91m  [ERR] System Integrity Check Failed: Signature or author credentials have been modified.\033[0m\n")
+        sys.exit(1)
+
     parser = build_parser()
     args   = parser.parse_args()
 
