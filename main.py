@@ -71,6 +71,41 @@ def ensure_setup():
     )
 
 
+def prompt_version_choice(item_name: str) -> str:
+    """
+    Prompt the user to optionally specify a version preference (LTS, Latest, or Custom).
+    """
+    try:
+        specify = input(f"\n  Would you like to specify a version preference for '{item_name}'? [y/N]: ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return ""
+    if specify not in ("y", "yes"):
+        return ""
+
+    print(f"    1. LTS (Long-Term Support) / Stable [Recommended]")
+    print(f"    2. Latest stable release")
+    print(f"    3. Custom / Specific version tag")
+
+    while True:
+        try:
+            choice = input(f"\n  Choice [1/2/3] > ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return ""
+        if choice == "1":
+            return " (Use the LTS/Stable version)"
+        elif choice == "2":
+            return " (Use the latest stable version)"
+        elif choice == "3":
+            try:
+                custom_version = input("  Enter specific version (e.g. 17, 21.0.2, latest): ").strip()
+            except (EOFError, KeyboardInterrupt):
+                return ""
+            if custom_version:
+                return f" (Install version {custom_version})"
+            return ""
+        print("  Invalid choice. Enter 1, 2, or 3.")
+
+
 # ── Core actions ───────────────────────────────────────────────────────────────
 
 def run_recipe(recipe_key: str, auto_yes: bool = False):
@@ -91,10 +126,15 @@ def run_recipe(recipe_key: str, auto_yes: bool = False):
 
     ui.section(f"Recipe: {recipe['name']}")
     ui.info(recipe["description"])
+
+    # Version preference selection (skipped if auto_yes is True)
+    v_pref = "" if auto_yes else prompt_version_choice(recipe["name"])
+    task_desc = recipe["task"] + v_pref
+
     print(f"\n  {ui.C.DIM}Asking AI to generate commands for {os_name}...{ui.C.RESET}")
 
     try:
-        result = get_install_commands(recipe["task"], os_name, pkg_mgr)
+        result = get_install_commands(task_desc, os_name, pkg_mgr)
     except Exception as e:
         ui.error(f"AI error: {e}")
         return
@@ -108,10 +148,15 @@ def run_custom_task(task: str, auto_yes: bool = False):
 
     ui.section("Custom Task")
     ui.info(f"Task: {task}")
+
+    # Version preference selection (skipped if auto_yes is True)
+    v_pref = "" if auto_yes else prompt_version_choice(task)
+    task_desc = task + v_pref
+
     print(f"\n  {ui.C.DIM}Asking AI to plan commands for {os_name}...{ui.C.RESET}")
 
     try:
-        result = get_install_commands(task, os_name, pkg_mgr)
+        result = get_install_commands(task_desc, os_name, pkg_mgr)
     except Exception as e:
         ui.error(f"AI error: {e}")
         return

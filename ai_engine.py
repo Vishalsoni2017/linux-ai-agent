@@ -214,7 +214,10 @@ def get_install_commands(task: str, os_name: str, package_manager: str) -> dict:
         '- "warnings": any important notes (empty string if none)\n\n'
         "Rules:\n"
         "- Use the correct package manager for the OS\n"
-        "- Include all dependencies needed\n"
+        "- Include all dependencies needed. If the tool is a Java application (like Jenkins, Tomcat), "
+        "always ensure a compatible, modern Java Runtime (like OpenJDK 17 or 11) is installed first.\n"
+        "- If a specific version preference (LTS, latest, or specific version tag) is specified in the task, "
+        "modify the repository settings or package names to install that specific version.\n"
         "- Commands must be non-interactive (-y flags, DEBIAN_FRONTEND=noninteractive, etc.)\n"
         "- Do NOT use sudo (the tool will prefix sudo when needed)\n"
         "- Return ONLY valid JSON, no markdown, no explanation outside JSON"
