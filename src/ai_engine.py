@@ -213,7 +213,10 @@ def get_install_commands(task: str, os_name: str, package_manager: str) -> dict:
         '- "commands": array of shell command strings to execute IN ORDER\n'
         '- "warnings": any important notes (empty string if none)\n\n'
         "Rules:\n"
-        "- Use the correct package manager for the OS\n"
+        "- Use the correct package manager for the OS.\n"
+        "- **Keep it minimal & efficient**: Produce the absolute minimum number of commands. Avoid installing unnecessary helper packages (like 'software-properties-common' which is often missing or fails on minimal systems) unless 'add-apt-repository' is explicitly required. Adding sources files directly via 'echo ... | tee /etc/apt/sources.list.d/...' is preferred.\n"
+        "- **Ensure GPG/download prerequisites**: Always verify and install basic prerequisites (like 'gpg' or 'gnupg', 'curl', 'wget') *before* running commands that use them (e.g., install 'gpg' before running 'gpg --dearmor').\n"
+        "- **Dynamic OS Codenames**: When setting up third-party repositories on Debian/Ubuntu, do NOT hardcode fixed old codenames (like 'bullseye', 'bionic', or 'focal'). Instead, use subshell commands like '$(lsb_release -cs)' or parsing '/etc/os-release' to fetch the active OS codename dynamically.\n"
         "- Include all dependencies needed. If the tool is a Java application (like Jenkins, Tomcat), "
         "always ensure a compatible, modern Java Runtime (like OpenJDK 17 or 11) is installed first.\n"
         "- If a specific version preference (LTS, latest, or specific version tag) is specified in the task, "

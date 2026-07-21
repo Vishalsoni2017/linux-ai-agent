@@ -128,7 +128,7 @@ def run_command(command: str, use_sudo: bool = True) -> Tuple[bool, str, str]:
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
+            text=False,
             bufsize=1,
         )
 
@@ -136,7 +136,11 @@ def run_command(command: str, use_sudo: bool = True) -> Tuple[bool, str, str]:
         stderr_lines: list[str] = []
 
         def _stream_stdout():
-            for line in proc.stdout:
+            while True:
+                line_bytes = proc.stdout.readline()
+                if not line_bytes:
+                    break
+                line = line_bytes.decode("utf-8", errors="replace")
                 print(colorize(f"     {line}", Color.DIM), end="", flush=True)
                 stdout_lines.append(line)
             proc.stdout.close()
@@ -144,9 +148,10 @@ def run_command(command: str, use_sudo: bool = True) -> Tuple[bool, str, str]:
         stdout_thread = threading.Thread(target=_stream_stdout, daemon=True)
         stdout_thread.start()
 
-        # Read stderr in the main thread while stdout drains in background
-        stderr_output = proc.stderr.read()
+        # Read stderr as bytes in the main thread, then decode with errors="replace"
+        stderr_bytes = proc.stderr.read()
         proc.stderr.close()
+        stderr_output = stderr_bytes.decode("utf-8", errors="replace")
 
         stdout_thread.join()
         proc.wait()

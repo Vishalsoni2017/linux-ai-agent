@@ -105,7 +105,7 @@ fi
 
 # ── Verify the tool is importable ───────────────────────────────────
 info "Verifying installation..."
-if python3 -c "import sys; sys.path.insert(0, '${REPO_DIR}'); import config, ai_engine, executor, ui, recipes" 2>&1; then
+if python3 -c "import sys; sys.path.insert(0, '${REPO_DIR}/src'); import config, ai_engine, executor, ui, recipes" 2>&1; then
     ok "All modules import cleanly."
 else
     warn "Module import check failed — check the output above for errors."

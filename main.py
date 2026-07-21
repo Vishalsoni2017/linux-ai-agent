@@ -25,13 +25,14 @@ import sys
 import os
 import argparse
 
-sys.path.insert(0, os.path.dirname(__file__))
+# Add the src/ directory containing all modules to sys.path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-import config
-import ui
-from ai_engine import get_install_commands, ask_ai
-from executor import execute_commands
-from recipes import RECIPES, CATEGORIES, get_recipes_by_category
+from src import config
+from src import ui
+from src.ai_engine import get_install_commands, ask_ai
+from src.executor import execute_commands
+from src.recipes import RECIPES, CATEGORIES, get_recipes_by_category
 
 
 # ── Setup wizard ───────────────────────────────────────────────────────────────
@@ -256,7 +257,7 @@ def _preview_and_execute(result: dict, label: str, os_name: str, pkg_mgr: str, a
         print(f"  {ui.C.DIM}  {i}. {cmd}{ui.C.RESET}")
 
     # Check if DRY_RUN is active
-    from executor import DRY_RUN
+    from src.executor import DRY_RUN
     if DRY_RUN:
         ui.warn("[DRY-RUN] Showing commands only — nothing will be executed.")
 
@@ -296,27 +297,27 @@ def interactive_mode():
 
         elif choice == "4":
             # Conversational AI agent
-            from agent_chat import run_agent_chat
+            from src.agent_chat import run_agent_chat
             run_agent_chat()
 
         elif choice == "5":
             # AI Server Diagnoser
-            from diagnoser import run_diagnose_flow
+            from src.diagnoser import run_diagnose_flow
             run_diagnose_flow()
 
         elif choice == "6":
             # Virtual host manager
-            from vhost_manager import add_vhost
+            from src.vhost_manager import add_vhost
             add_vhost()
 
         elif choice == "7":
             # Script writer
-            from script_manager import write_script
+            from src.script_manager import write_script
             write_script()
 
         elif choice == "8":
             # Cron manager
-            from script_manager import manage_crons
+            from src.script_manager import manage_crons
             manage_crons()
 
         elif choice == "9":
@@ -464,28 +465,28 @@ def main():
 
     elif args.command == "diagnose":
         ensure_setup()
-        from diagnoser import run_diagnose_flow
+        from src.diagnoser import run_diagnose_flow
         issue_str = " ".join(args.issue) if args.issue else None
         run_diagnose_flow(issue_str)
 
     elif args.command == "chat":
         ensure_setup()
-        from agent_chat import run_agent_chat
+        from src.agent_chat import run_agent_chat
         run_agent_chat()
 
     elif args.command == "vhost":
         ensure_setup()
-        from vhost_manager import add_vhost
+        from src.vhost_manager import add_vhost
         add_vhost()
 
     elif args.command == "script":
         ensure_setup()
-        from script_manager import write_script
+        from src.script_manager import write_script
         write_script()
 
     elif args.command == "cron":
         ensure_setup()
-        from script_manager import manage_crons
+        from src.script_manager import manage_crons
         manage_crons()
 
     elif args.command == "model":
