@@ -255,24 +255,29 @@ def interactive_mode():
             run_agent_chat()
 
         elif choice == "5":
+            # AI Server Diagnoser
+            from diagnoser import run_diagnose_flow
+            run_diagnose_flow()
+
+        elif choice == "6":
             # Virtual host manager
             from vhost_manager import add_vhost
             add_vhost()
 
-        elif choice == "6":
+        elif choice == "7":
             # Script writer
             from script_manager import write_script
             write_script()
 
-        elif choice == "7":
+        elif choice == "8":
             # Cron manager
             from script_manager import manage_crons
             manage_crons()
 
-        elif choice == "8":
+        elif choice == "9":
             change_settings()
 
-        elif choice == "9":
+        elif choice == "10":
             ui.show_usage_summary()
 
         elif choice == "0":
@@ -351,6 +356,9 @@ EXAMPLES:
     p = subs.add_parser("ask", help="Ask AI a Linux question")
     p.add_argument("question", nargs="+")
 
+    p = subs.add_parser("diagnose", help="Diagnose a server or service error (AI Diagnoser)")
+    p.add_argument("issue", nargs="*")
+
     subs.add_parser("chat",   help="Conversational AI agent (multi-turn)")
     subs.add_parser("vhost",  help="Add Nginx/Apache virtual host + SSL")
     subs.add_parser("script", help="AI script writer")
@@ -408,6 +416,12 @@ def main():
     elif args.command == "ask":
         ensure_setup()
         run_ai_qa(question=" ".join(args.question))
+
+    elif args.command == "diagnose":
+        ensure_setup()
+        from diagnoser import run_diagnose_flow
+        issue_str = " ".join(args.issue) if args.issue else None
+        run_diagnose_flow(issue_str)
 
     elif args.command == "chat":
         ensure_setup()

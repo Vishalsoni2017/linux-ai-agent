@@ -138,11 +138,12 @@ def main_menu():
         ("2", "[AI]     Custom task (describe anything in plain English)"),
         ("3", "[Q&A]    Ask AI a question about Linux"),
         ("4", "[CHAT]   Conversational AI agent (multi-turn)"),
-        ("5", "[VHOST]  Add Nginx / Apache virtual host + SSL"),
-        ("6", "[SCRIPT] Write a bash script with AI"),
-        ("7", "[CRON]   Manage cron jobs"),
-        ("8", "[CFG]    Settings (OS / API key / Model)"),
-        ("9", "[STATS]  View token & credit usage"),
+        ("5", "[DIAG]   AI Server Diagnoser (check logs, configs, fix errors)"),
+        ("6", "[VHOST]  Add Nginx / Apache virtual host + SSL"),
+        ("7", "[SCRIPT] Write a bash script with AI"),
+        ("8", "[CRON]   Manage cron jobs"),
+        ("9", "[CFG]    Settings (OS / API key / Model)"),
+        ("10", "[STATS] View token & credit usage"),
         ("0", "[EXIT]   Exit"),
     ]
     for key, label in options:

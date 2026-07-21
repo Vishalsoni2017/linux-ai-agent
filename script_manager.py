@@ -56,6 +56,7 @@ def _make_write_commands(content: str, dest_path: str) -> list:
     Return a list of commands that safely write *content* to *dest_path*
     on the remote/local Linux system, regardless of what characters are in
     the content.
+    Also automatically creates the parent directory of dest_path.
 
     Strategy: base64-encode the content, pipe through `base64 -d | tee`.
     This avoids all heredoc quoting issues.
@@ -65,9 +66,69 @@ def _make_write_commands(content: str, dest_path: str) -> list:
     chunks = [encoded[i:i+76] for i in range(0, len(encoded), 76)]
     b64_oneliner = "".join(chunks)
 
+    dir_name = os.path.dirname(dest_path)
     write_cmd  = f"bash -c \"echo '{b64_oneliner}' | base64 -d | tee {dest_path} > /dev/null\""
     chmod_cmd  = f"chmod +x {dest_path}"
+
+    if dir_name:
+        mkdir_cmd = f"mkdir -p {dir_name}"
+        return [mkdir_cmd, write_cmd, chmod_cmd]
     return [write_cmd, chmod_cmd]
+
+
+def ensure_cron_installed() -> bool:
+    """
+    Check if crontab is available on the system.
+    If not, offer the user to install cron automatically using their package manager.
+    """
+    import shutil
+    if shutil.which("crontab") is not None:
+        return True
+
+    ui.warn("crontab command not found. Cron may not be installed on this server.")
+    confirm = input("  Would you like the agent to install cron for you? [y/n]: ").strip().lower()
+    if confirm in ("y", "yes"):
+        os_name = config.get("os_name", "Ubuntu 22.04")
+        pkg_mgr = config.get("package_manager", "apt")
+
+        if pkg_mgr == "apt":
+            commands = [
+                "apt-get update && apt-get install -y cron",
+                "systemctl enable cron",
+                "systemctl start cron"
+            ]
+        elif pkg_mgr in ("yum", "dnf"):
+            commands = [
+                "yum install -y cronie",
+                "systemctl enable crond",
+                "systemctl start crond"
+            ]
+        elif pkg_mgr == "pacman":
+            commands = [
+                "pacman -Sy --noconfirm cronie",
+                "systemctl enable cronie",
+                "systemctl start cronie"
+            ]
+        elif pkg_mgr == "zypper":
+            commands = [
+                "zypper install -y cronie",
+                "systemctl enable cron",
+                "systemctl start cron"
+            ]
+        else:
+            commands = ["apt-get update && apt-get install -y cron"]
+
+        print("\n  Installing cron...")
+        from executor import execute_commands
+        execute_commands(commands, os_name, pkg_mgr)
+
+        if shutil.which("crontab") is not None:
+            ui.success("Cron installed successfully!")
+            return True
+        else:
+            ui.error("Failed to verify cron installation. Please install it manually.")
+            return False
+    return False
 
 
 # ── Script Writer ──────────────────────────────────────────────────────────────
@@ -88,7 +149,15 @@ def write_script():
         ui.error("Description cannot be empty.")
         return
 
-    default_name = description.split()[0].lower().replace("/", "_") + ".sh"
+    # Clean the description to extract a descriptive default filename
+    words = [w.lower().strip() for w in description.split() if w.strip()]
+    stop_words = {"create", "write", "make", "setup", "install", "generate", "run", "a", "the", "to", "script", "for"}
+    filtered_words = [w for w in words if w not in stop_words and w.isalnum()]
+    if not filtered_words:
+        filtered_words = [w for w in words if w.isalnum()]
+
+    prefix = "_".join(filtered_words[:3]) if filtered_words else "script"
+    default_name = f"{prefix}.sh"
     default_path = f"/usr/local/bin/{default_name}"
     script_path  = input(f"  Save to [{default_path}]: ").strip() or default_path
 
@@ -144,6 +213,10 @@ Return ONLY the raw bash script content. No markdown, no explanation."""
     execute_commands(commands, os_name_stored, pkg_mgr)
 
     ui.success(f"Script written to {script_path} and made executable.")
+    ui.info("NOTE: This is a Bash script. To execute it correctly, run:")
+    print(f"  {ui.C.BOLD}bash {script_path}{ui.C.RESET}")
+    print(f"  or: {ui.C.BOLD}{script_path}{ui.C.RESET}")
+    ui.warn("Avoid running it with 'sh' (e.g. 'sh script.sh') because 'sh' is mapped to 'dash' on Ubuntu/Debian, which lacks bash-specific features and will cause syntax errors.")
 
     config.log_audit(
         "SCRIPT_WRITE",
@@ -161,6 +234,8 @@ Return ONLY the raw bash script content. No markdown, no explanation."""
 # ── Cron Manager ───────────────────────────────────────────────────────────────
 
 def manage_crons():
+    if not ensure_cron_installed():
+        return
     ui.section("Cron Job Manager")
     options = [
         ("1", "List current cron jobs"),
@@ -186,6 +261,8 @@ def manage_crons():
 
 
 def list_crons():
+    if not ensure_cron_installed():
+        return
     ui.section("Current Cron Jobs")
     try:
         result = subprocess.run(
@@ -240,6 +317,8 @@ No explanation."""
 
 
 def add_cronjob(script_path: str = "", ai_suggest: bool = False):
+    if not ensure_cron_installed():
+        return
     ui.section("Add Cron Job")
 
     if not script_path:
@@ -279,6 +358,8 @@ def add_cronjob(script_path: str = "", ai_suggest: bool = False):
 
 
 def remove_cronjob():
+    if not ensure_cron_installed():
+        return
     ui.section("Remove Cron Job")
     try:
         result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)

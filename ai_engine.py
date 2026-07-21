@@ -315,3 +315,67 @@ def ask_ai_with_history(history: list, os_name: str) -> str:
     }
     messages = [system_msg] + history
     return _call_api(messages, temperature=0.5, max_tokens=2048)
+
+
+def get_diagnostic_commands(issue: str, os_name: str, package_manager: str) -> list:
+    """
+    Ask AI what commands to run to inspect logs, configs, ports, or service status
+    for a given issue.
+    """
+    system_prompt = (
+        f"You are a Linux troubleshooting expert.\n"
+        f"The user is running: {os_name}\n"
+        f"Package manager: {package_manager}\n\n"
+        "Recommend 2 to 4 non-interactive shell commands (e.g. journalctl -u service -n 50, "
+        "cat /var/log/path, ss -tuln, service status) to inspect log files, check configuration files, "
+        "or ports to troubleshoot the user's issue.\n"
+        "Return ONLY a JSON array of strings containing the commands. No other text."
+    )
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user",   "content": f"Issue: {issue}"},
+    ]
+
+    raw = _call_api(messages, temperature=0.1)
+    raw = _strip_markdown_fences(raw)
+
+    try:
+        commands = json.loads(raw)
+        if not isinstance(commands, list):
+            commands = [raw]
+    except json.JSONDecodeError:
+        commands = []
+    return commands
+
+
+def analyze_diagnostic_data(issue: str, gathered_data: str, os_name: str, package_manager: str) -> dict:
+    """
+    Analyze logs, configs, and output gathered on the server and return a diagnosis and fix plan.
+    """
+    system_prompt = (
+        f"You are a Linux diagnostics expert.\n"
+        f"The user is running: {os_name}\n"
+        f"Package manager: {package_manager}\n\n"
+        "Analyze the gathered server diagnostics data (command outputs, logs, configs) and return a JSON object with:\n"
+        '- "diagnosis": clear, detailed explanation of the root cause\n'
+        '- "fix_commands": array of shell command strings to run (in order) to solve the issue. Commands must be non-interactive. Do not use sudo.\n\n'
+        "Return ONLY valid JSON, no markdown, no other text."
+    )
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user",   "content": f"User Issue:\n{issue}\n\nGathered Diagnostics Data:\n{gathered_data}"},
+    ]
+
+    raw = _call_api(messages, temperature=0.2)
+    raw = _strip_markdown_fences(raw)
+
+    try:
+        result = json.loads(raw)
+    except json.JSONDecodeError:
+        result = {
+            "diagnosis": "Failed to parse AI response. Raw response:\n" + raw,
+            "fix_commands": []
+        }
+    return result
