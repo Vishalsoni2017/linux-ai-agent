@@ -163,29 +163,57 @@ def write_script():
 
     ui.info("Asking AI to write the script...")
 
-    prompt = f"""Write a complete, production-quality bash script for the following task:
+    prompt = f"""You are an expert Linux bash scripter. Write a bash script for this task.
 
 Task: {description}
 Target OS: {os_name}
 
-Requirements:
-- Start with #!/usr/bin/env bash
-- Add set -euo pipefail
-- Include descriptive comments
-- Use absolute paths for all commands
-- Handle errors gracefully with meaningful messages
-- Log output with timestamps to /var/log/ if appropriate
-- Make it idempotent where possible
+╔══════════════════════════════════════════════════╗
+║  CRITICAL RULES — follow these exactly           ║
+╚══════════════════════════════════════════════════╝
 
-Return ONLY the raw bash script content. No markdown, no explanation."""
+1. MATCH COMPLEXITY TO THE TASK:
+   - Simple task (find files, check disk, restart service) → SHORT simple script, no functions, no classes.
+   - Complex task (backup + email alert + rotation) → structured with functions.
+   - NEVER add complexity that was not requested.
+
+2. NO EVAL: Never use eval or dynamically constructed command strings with variable interpolation.
+   - ✗ BAD:  eval "${{FIND_CMD}}"
+   - ✓ GOOD: find / -type f -printf '%s %p\\n' 2>/dev/null | sort -rn | head -5
+
+3. NO OVER-ENGINEERING:
+   - Do NOT add log files unless the task explicitly asks for logging.
+   - Do NOT add email notifications unless asked.
+   - Do NOT build exclude options as strings — write them inline.
+   - Do NOT use functions if a simple one-liner does the job.
+
+4. SIMPLE PATTERNS FOR COMMON TASKS:
+   - Find top N largest files:
+       du -ah --exclude=/proc --exclude=/sys --exclude=/dev 2>/dev/null | sort -rh | head -5
+     OR:
+       find / -xdev -type f -printf '%s\\t%p\\n' 2>/dev/null | sort -rn | head -5 | numfmt --to=iec --field=1
+   - Check disk usage:     df -h
+   - Find large dirs:      du -h --max-depth=1 / 2>/dev/null | sort -rh | head -10
+   - Check top processes:  ps aux --sort=-%mem | head -10
+   - Restart service:      systemctl restart servicename && systemctl status servicename
+
+5. ALWAYS START WITH:
+   #!/usr/bin/env bash
+   set -euo pipefail
+
+6. USE RELATIVE TOOL NAMES (not absolute paths like /usr/bin/find).
+   The PATH is always set correctly in bash scripts.
+
+7. RETURN ONLY the raw bash script. No markdown fences. No explanation. No comments
+   about what you're doing — just working bash code with brief inline comments."""
 
     messages = [
-        {"role": "system", "content": "You are an expert Linux bash scripter. Return only the raw script content with no markdown fences."},
+        {"role": "system", "content": "You are an expert Linux bash scripter. Write clean, simple, working scripts. Return only raw bash content, no markdown."},
         {"role": "user",   "content": prompt},
     ]
 
     try:
-        script_content = _call_api(messages, temperature=0.2)
+        script_content = _call_api(messages, temperature=0.15)
     except Exception as e:
         ui.error(f"AI error: {e}")
         return
