@@ -247,51 +247,68 @@ def get_install_commands(task: str, os_name: str, package_manager: str) -> dict:
         "║  OFFICIAL INSTALL RECIPES — use EXACTLY these approaches         ║\n"
         "╚══════════════════════════════════════════════════════════════════╝\n\n"
 
-        "TERRAFORM (latest):\n"
-        "  Single bash -c block:\n"
+        "DOCKER (Ubuntu & Debian — official apt method, single block):\n"
+        "  Use these EXACT commands, in this EXACT order (all as one bash -c block):\n"
         "  bash -c '\n"
-        "    apt-get install -y curl unzip;\n"
-        "    TF_VER=$(curl -fsSL https://checkpoint-api.hashicorp.com/v1/check/terraform | python3 -c \"import sys,json;print(json.load(sys.stdin)[\\\"current_version\\\"])\");\n"
+        "    apt-get update -y && apt-get install -y ca-certificates curl;\n"
+        "    install -m 0755 -d /etc/apt/keyrings;\n"
+        "    curl -fsSL https://download.docker.com/linux/$(. /etc/os-release && echo $ID)/gpg -o /etc/apt/keyrings/docker.asc;\n"
+        "    chmod a+r /etc/apt/keyrings/docker.asc;\n"
+        "    echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/$(. /etc/os-release && echo $ID) $(. /etc/os-release && echo ${UBUNTU_CODENAME:-$VERSION_CODENAME}) stable\" | tee /etc/apt/sources.list.d/docker.list > /dev/null;\n"
+        "    apt-get update -y && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin;\n"
+        "    systemctl enable docker && systemctl start docker\n"
+        "  '\n"
+        "  IMPORTANT: The $(. /etc/os-release && echo $ID) detects ubuntu vs debian automatically.\n"
+        "  IMPORTANT: /etc/apt/keyrings MUST be created with 'install -m 0755 -d' BEFORE curl writes to it.\n"
+        "  IMPORTANT: Use '.asc' extension (not '.gpg') — saves the raw PEM key, no gpg --dearmor needed.\n\n"
+
+        "TERRAFORM (latest, single block):\n"
+        "  bash -c '\n"
+        "    apt-get install -y curl unzip python3;\n"
+        '    TF_VER=$(curl -fsSL https://checkpoint-api.hashicorp.com/v1/check/terraform | python3 -c \'import sys,json;d=json.load(sys.stdin);print(d["current_version"])\');\n'
         "    curl -fsSL https://releases.hashicorp.com/terraform/${TF_VER}/terraform_${TF_VER}_linux_amd64.zip -o /tmp/terraform.zip;\n"
         "    unzip -o /tmp/terraform.zip -d /usr/local/bin terraform;\n"
         "    rm -f /tmp/terraform.zip;\n"
         "    chmod +x /usr/local/bin/terraform\n"
         "  '\n\n"
 
-        "DOCKER (latest):\n"
-        "  curl -fsSL https://get.docker.com | bash\n\n"
-
-        "JENKINS:\n"
+        "JENKINS (single logical flow):\n"
         "  1. apt-get install -y openjdk-17-jre curl gnupg\n"
-        "  2. bash -c 'curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | gpg --dearmor -o /usr/share/keyrings/jenkins-keyring.gpg && echo \"deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/\" | tee /etc/apt/sources.list.d/jenkins.list'\n"
-        "  3. apt-get update && apt-get install -y jenkins\n"
-        "  4. systemctl enable jenkins && systemctl start jenkins\n\n"
+        "  2. bash -c '\n"
+        "       install -m 0755 -d /usr/share/keyrings;\n"
+        "       curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key -o /usr/share/keyrings/jenkins-keyring.asc;\n"
+        "       echo \"deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/\" | tee /etc/apt/sources.list.d/jenkins.list > /dev/null;\n"
+        "       apt-get update && apt-get install -y jenkins\n"
+        "     '\n"
+        "  3. systemctl enable jenkins && systemctl start jenkins && systemctl status jenkins\n\n"
 
-        "NODE.JS (latest LTS via NodeSource):\n"
+        "NODE.JS (latest LTS, NodeSource):\n"
         "  bash -c 'curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && apt-get install -y nodejs'\n\n"
 
-        "KUBECTL:\n"
+        "KUBECTL (latest stable binary):\n"
         "  bash -c 'curl -fsSL https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl'\n\n"
 
-        "WORDPRESS (latest):\n"
-        "  1. apt-get install -y apache2 mysql-server php php-mysql php-curl php-gd php-mbstring php-xml php-xmlrpc libapache2-mod-php curl\n"
+        "WORDPRESS (latest, Apache + MySQL + PHP):\n"
+        "  1. DEBIAN_FRONTEND=noninteractive apt-get install -y apache2 mysql-server php php-mysql php-curl php-gd php-mbstring php-xml php-xmlrpc libapache2-mod-php curl\n"
         "  2. bash -c 'curl -fsSL https://wordpress.org/latest.tar.gz | tar -xz -C /var/www/html --strip-components=1'\n"
-        "  3. chown -R www-data:www-data /var/www/html && systemctl restart apache2\n\n"
-
-        "ANSIBLE:\n"
-        "  apt-get install -y ansible\n\n"
-
-        "PYTHON3/PIP:\n"
-        "  apt-get install -y python3 python3-pip python3-venv\n\n"
+        "  3. bash -c 'chown -R www-data:www-data /var/www/html && chmod -R 755 /var/www/html && systemctl enable apache2 && systemctl restart apache2'\n\n"
 
         "NGINX:\n"
-        "  apt-get install -y nginx && systemctl enable nginx && systemctl start nginx\n\n"
+        "  bash -c 'apt-get install -y nginx && systemctl enable nginx && systemctl start nginx && nginx -v'\n\n"
 
-        "MYSQL:\n"
-        "  bash -c 'DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server && systemctl enable mysql && systemctl start mysql'\n\n"
+        "MYSQL / MARIADB:\n"
+        "  bash -c 'DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server && systemctl enable mysql && systemctl start mysql && mysql --version'\n\n"
 
-        "Always end with a verification command (e.g., 'terraform version', 'systemctl status jenkins').\n\n"
-        "Return ONLY valid JSON. No markdown. No text outside the JSON object."
+        "ANSIBLE:\n"
+        "  bash -c 'apt-get install -y ansible && ansible --version'\n\n"
+
+        "PYTHON3/PIP:\n"
+        "  apt-get install -y python3 python3-pip python3-venv && python3 --version\n\n"
+
+        "CERTBOT / SSL:\n"
+        "  bash -c 'apt-get install -y certbot python3-certbot-nginx && certbot --version'\n\n"
+
+        "Always end with a verification command. Return ONLY valid JSON. No markdown. No text outside the JSON object."
     )
 
     messages = [
