@@ -206,6 +206,12 @@ Target OS: {os_name}
 6. ALWAYS START WITH:
    #!/usr/bin/env bash
    set -euo pipefail
+   
+   # Ensure the script is run with bash, not sh
+   if [ -z "${BASH_VERSION:-}" ]; then
+       echo "Error: this script must be run with bash, not sh." >&2
+       exit 1
+   fi
 
 7. USE RELATIVE TOOL NAMES (not absolute paths like /usr/bin/find or /usr/bin/sleep).
    The shell PATH is always set. Absolute paths (e.g., /usr/bin/free) crash on systems
