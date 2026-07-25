@@ -61,6 +61,32 @@ def _strip_markdown_fences(text: str) -> str:
     return text.strip()
 
 
+def _extract_json(text: str) -> dict | None:
+    """
+    Robustly extract the first JSON object from the response string,
+    even if surrounded by markdown fences or introductory/conversational text.
+    """
+    text_stripped = _strip_markdown_fences(text)
+    
+    # Try direct parse first
+    try:
+        return json.loads(text_stripped)
+    except json.JSONDecodeError:
+        pass
+
+    # Try finding outermost braces
+    start = text_stripped.find('{')
+    end = text_stripped.rfind('}')
+    if start != -1 and end != -1 and end > start:
+        candidate = text_stripped[start:end+1]
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+
+    return None
+
+
 def _print_usage(usage: dict, model_used: str):
     """Print a compact token-usage line after every API call."""
     pt   = usage.get("prompt_tokens",     0)
@@ -317,11 +343,10 @@ def get_install_commands(task: str, os_name: str, package_manager: str) -> dict:
     ]
 
     raw = _call_api(messages)
-    raw = _strip_markdown_fences(raw)
-
-    try:
-        result = json.loads(raw)
-    except json.JSONDecodeError:
+    parsed = _extract_json(raw)
+    if parsed is not None:
+        result = parsed
+    else:
         result = {
             "description": task,
             "commands":    [raw],
@@ -383,11 +408,10 @@ def fix_error(
     ]
 
     raw = _call_api(messages)
-    raw = _strip_markdown_fences(raw)
-
-    try:
-        result = json.loads(raw)
-    except json.JSONDecodeError:
+    parsed = _extract_json(raw)
+    if parsed is not None:
+        result = parsed
+    else:
         result = {"diagnosis": "Could not parse AI response", "fix_commands": []}
 
     return result

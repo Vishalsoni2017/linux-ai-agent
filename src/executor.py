@@ -159,7 +159,7 @@ def run_command(command: str, use_sudo: bool = True) -> Tuple[bool, str, str]:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=False,
-            bufsize=1,
+            bufsize=-1,
         )
 
         stdout_lines: list[str] = []
