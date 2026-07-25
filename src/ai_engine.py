@@ -205,25 +205,44 @@ def get_install_commands(task: str, os_name: str, package_manager: str) -> dict:
     Returns: {"description": str, "commands": [str], "warnings": str}
     """
     system_prompt = (
-        f"You are a Linux system administration expert.\n"
-        f"The user is running: {os_name}\n"
+        f"You are a senior Linux DevOps engineer and system administrator.\n"
+        f"Target OS: {os_name}\n"
         f"Package manager: {package_manager}\n\n"
-        "Return a JSON object with these keys:\n"
-        '- "description": short one-line summary of what will be done\n'
+        "Your job is to produce a clean, CORRECT, one-shot installation plan that will SUCCEED\n"
+        "the first time without manual intervention. Think carefully before generating commands.\n\n"
+        "Return a JSON object with EXACTLY these keys:\n"
+        '- "description": short one-line summary\n'
         '- "commands": array of shell command strings to execute IN ORDER\n'
         '- "warnings": any important notes (empty string if none)\n\n'
-        "Rules:\n"
-        "- Use the correct package manager for the OS.\n"
-        "- **Keep it minimal & efficient**: Produce the absolute minimum number of commands. Avoid installing unnecessary helper packages (like 'software-properties-common' which is often missing or fails on minimal systems) unless 'add-apt-repository' is explicitly required. Adding sources files directly via 'echo ... | tee /etc/apt/sources.list.d/...' is preferred.\n"
-        "- **Ensure GPG/download prerequisites**: Always verify and install basic prerequisites (like 'gpg' or 'gnupg', 'curl', 'wget') *before* running commands that use them (e.g., install 'gpg' before running 'gpg --dearmor').\n"
-        "- **Dynamic OS Codenames**: When setting up third-party repositories on Debian/Ubuntu, do NOT hardcode fixed old codenames (like 'bullseye', 'bionic', or 'focal'). Instead, use subshell commands like '$(lsb_release -cs)' or parsing '/etc/os-release' to fetch the active OS codename dynamically.\n"
-        "- Include all dependencies needed. If the tool is a Java application (like Jenkins, Tomcat), "
-        "always ensure a compatible, modern Java Runtime (like OpenJDK 17 or 11) is installed first.\n"
-        "- If a specific version preference (LTS, latest, or specific version tag) is specified in the task, "
-        "modify the repository settings or package names to install that specific version.\n"
-        "- Commands must be non-interactive (-y flags, DEBIAN_FRONTEND=noninteractive, etc.)\n"
-        "- Do NOT use sudo (the tool will prefix sudo when needed)\n"
-        "- Return ONLY valid JSON, no markdown, no explanation outside JSON"
+        "=== STRICT RULES (violating any of these causes failures) ===\n\n"
+        "1. DYNAMIC OS CODENAME: NEVER hardcode distribution codenames like 'bullseye', 'bookworm',\n"
+        "   'focal', 'jammy', 'bionic'. Always use $(. /etc/os-release && echo $VERSION_CODENAME)\n"
+        "   or $(lsb_release -cs) in-line. The machine may be running a newer release.\n\n"
+        "2. PREREQUISITES FIRST: If you need 'gpg', 'curl', 'wget', 'unzip', 'tar' — install them\n"
+        "   in the very first command BEFORE using them. Never assume they exist.\n\n"
+        "3. AVOID BLOAT PACKAGES: Do NOT install 'software-properties-common' or 'python-apt'.\n"
+        "   These fail on minimal/Debian-stable systems. Use direct echo/tee to write sources.list.d.\n\n"
+        "4. USE OFFICIAL METHODS: For well-known tools, use their official install scripts or binary\n"
+        "   downloads when they are simpler and more reliable than adding apt/yum repos:\n"
+        "   - Terraform/OpenTofu: download the .zip from releases.hashicorp.com, unzip to /usr/local/bin\n"
+        "   - Docker: use the official install script: curl -fsSL https://get.docker.com | bash\n"
+        "   - kubectl: curl official binary from dl.k8s.io\n"
+        "   - Node.js: use NodeSource install script (curl | bash)\n"
+        "   - Jenkins: apt repo + openjdk-17-jre, use $(. /etc/os-release && echo $VERSION_CODENAME)\n"
+        "   - WordPress: download tar.gz from wordpress.org/latest.tar.gz directly\n"
+        "   - MySQL: standard apt/yum package, DEBIAN_FRONTEND=noninteractive\n"
+        "   - Nginx/Apache: standard package manager\n\n"
+        "5. IDEMPOTENT: Use 'command -v tool' or 'which tool' checks where appropriate so\n"
+        "   re-running doesn't break an existing install.\n\n"
+        "6. NON-INTERACTIVE: All commands must run with zero user input. Use:\n"
+        "   -y flags, DEBIAN_FRONTEND=noninteractive, --batch, --quiet, --no-input, -f, etc.\n\n"
+        "7. COMBINE RELATED STEPS: Merge related apt-get calls into a single command to reduce\n"
+        "   round-trips. e.g., 'apt-get install -y curl gpg unzip' not 3 separate install lines.\n\n"
+        "8. JAVA APPS: For Jenkins, Tomcat, Elasticsearch — ALWAYS install OpenJDK 17+ first.\n\n"
+        "9. NO SUDO: Do not prefix any command with sudo. The tool adds sudo automatically.\n\n"
+        "10. VERIFY: Add a final verification command (e.g., 'tool --version' or 'systemctl status tool')\n"
+        "    so the user can confirm the install succeeded.\n\n"
+        "Return ONLY valid JSON. No markdown fences. No explanations outside the JSON object."
     )
 
     messages = [
@@ -246,31 +265,55 @@ def get_install_commands(task: str, os_name: str, package_manager: str) -> dict:
     return result
 
 
-def fix_error(command: str, error_output: str, os_name: str, package_manager: str) -> dict:
+def fix_error(
+    command: str,
+    error_output: str,
+    os_name: str,
+    package_manager: str,
+    previous_steps: list | None = None,
+) -> dict:
     """
-    Diagnose a failed command and return fix commands.
+    Diagnose a failed command and return the minimal, correct fix commands.
+    previous_steps: list of (cmd, success: bool) tuples showing what ran before this failure.
     Returns: {"diagnosis": str, "fix_commands": [str]}
     """
+    context_block = ""
+    if previous_steps:
+        lines = []
+        for step_cmd, step_ok in previous_steps:
+            status = "✓ succeeded" if step_ok else "✗ failed"
+            lines.append(f"  [{status}] {step_cmd}")
+        context_block = "\nPrevious steps in this session:\n" + "\n".join(lines) + "\n"
+
     system_prompt = (
-        f"You are a Linux troubleshooting expert.\n"
-        f"The user is running: {os_name}\n"
+        f"You are a senior Linux troubleshooting engineer.\n"
+        f"Target OS: {os_name}\n"
         f"Package manager: {package_manager}\n\n"
-        "A command failed. Return a JSON object with:\n"
-        '- "diagnosis": short explanation of what went wrong\n'
-        '- "fix_commands": array of shell commands to fix the issue (in order)\n\n'
-        "Rules:\n"
-        "- Use the correct package manager for the OS\n"
-        "- Commands must be non-interactive\n"
-        "- Do NOT use sudo (the tool will add it)\n"
-        "- Return ONLY valid JSON"
+        "A command failed during an automated installation. Analyse the EXACT error, consider\n"
+        "what already succeeded, and return the minimal correct fix to unblock progress.\n\n"
+        "Return a JSON object with EXACTLY:\n"
+        '- "diagnosis": concise explanation of the root cause (1-2 sentences)\n'
+        '- "fix_commands": array of shell command strings to fix the issue, then\n'
+        '  re-attempt the failed step if needed. Must be non-interactive.\n\n'
+        "=== STRICT RULES ===\n"
+        "- NEVER hardcode OS codenames. Use $(. /etc/os-release && echo $VERSION_CODENAME).\n"
+        "- If the error is 'Unable to locate package X', do NOT retry the same command.\n"
+        "  Instead find the correct repo/source for X on this OS and add it first.\n"
+        "- If the error is a GPG/signature issue, fetch the correct key from the official source.\n"
+        "- If the error is 'command not found', install the missing package first.\n"
+        "- Do NOT add 'software-properties-common' — it often fails. Use direct tee approach.\n"
+        "- Do NOT use sudo. Do NOT use markdown. Return ONLY valid JSON."
+    )
+
+    user_content = (
+        f"Failed command:\n{command}\n"
+        f"{context_block}"
+        f"\nError output:\n{error_output[:3000]}"  # cap to avoid token overflow
     )
 
     messages = [
         {"role": "system", "content": system_prompt},
-        {
-            "role": "user",
-            "content": f"Failed command:\n{command}\n\nError output:\n{error_output}",
-        },
+        {"role": "user",   "content": user_content},
     ]
 
     raw = _call_api(messages)

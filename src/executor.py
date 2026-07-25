@@ -221,22 +221,27 @@ def execute_commands(
     Walk through a list of commands:
     1. Ask permission for each
     2. Run if approved
-    3. On failure, ask AI for a fix and retry (up to max_retries times)
+    3. On failure, ask AI for a fix (with full session context) and retry
     """
     from ai_engine import fix_error
 
     log_audit("PLAN_START", f"OS: {os_name}\nPackage Manager: {package_manager}\nCommands:\n" + "\n".join(commands))
 
     total = len(commands)
+    # Track execution history so fix_error has full context
+    step_history: list = []  # list of (cmd: str, success: bool)
+
     for idx, cmd in enumerate(commands, start=1):
         print(colorize(f"\n[{idx}/{total}]", Color.BOLD), end=" ")
 
         approved = ask_permission(cmd)
         if not approved:
             log_audit("COMMAND_SKIP", f"Command: {cmd}")
+            step_history.append((cmd, False))
             continue
 
         success, stdout, stderr = run_command(cmd)
+        step_history.append((cmd, success))
 
         if success:
             continue
@@ -257,7 +262,11 @@ def execute_commands(
             ))
 
             try:
-                fix = fix_error(cmd, error_context, os_name, package_manager)
+                # Pass full history so the AI understands what already worked
+                fix = fix_error(
+                    cmd, error_context, os_name, package_manager,
+                    previous_steps=step_history[:-1]  # exclude the just-failed step
+                )
             except Exception as e:
                 print(colorize(f"  AI error: {e}", Color.RED))
                 break
@@ -275,12 +284,14 @@ def execute_commands(
             for fix_cmd in fix_cmds:
                 print(colorize("\n  Fix step:", Color.CYAN))
                 if ask_permission(fix_cmd):
-                    run_command(fix_cmd)
+                    fix_ok, _, _ = run_command(fix_cmd)
+                    step_history.append((fix_cmd, fix_ok))
 
             # Retry the original command
             print(colorize("\n  ↩  Retrying original command...", Color.CYAN))
             if ask_permission(cmd):
                 success, stdout, stderr = run_command(cmd)
+                step_history.append((cmd, success))
                 error_context = stderr or stdout or "Unknown error"
             else:
                 break
