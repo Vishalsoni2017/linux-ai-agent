@@ -197,14 +197,21 @@ Target OS: {os_name}
    - Check top processes:  ps aux --sort=-%mem | head -10
    - Restart service:      systemctl restart servicename && systemctl status servicename
 
-5. ALWAYS START WITH:
+5. NO INFINITE SLEEP LOOPS FOR PERIODIC TASKS:
+   - If the task describes running a script periodically (e.g., 'every 10 minutes', 'hourly', 'daily'),
+     do NOT write an infinite 'while true' loop with a 'sleep' command inside it.
+     Instead, write a script that runs EXACTLY ONCE to do the task, and print a brief note
+     recommending to register the script in cron. Infinite sleep loops waste resources and hang.
+
+6. ALWAYS START WITH:
    #!/usr/bin/env bash
    set -euo pipefail
 
-6. USE RELATIVE TOOL NAMES (not absolute paths like /usr/bin/find).
-   The PATH is always set correctly in bash scripts.
+7. USE RELATIVE TOOL NAMES (not absolute paths like /usr/bin/find or /usr/bin/sleep).
+   The shell PATH is always set. Absolute paths (e.g., /usr/bin/free) crash on systems
+   where the tools are located in /bin/free.
 
-7. RETURN ONLY the raw bash script. No markdown fences. No explanation. No comments
+8. RETURN ONLY the raw bash script. No markdown fences. No explanation. No comments
    about what you're doing — just working bash code with brief inline comments."""
 
     messages = [
