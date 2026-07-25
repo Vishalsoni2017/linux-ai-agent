@@ -26,6 +26,16 @@ from config import log_audit
 # ── Dry-run mode ────────────────────────────────────────────────────────────────
 DRY_RUN: bool = os.environ.get("LINUX_AGENT_DRY_RUN", "").strip() in ("1", "true", "yes")
 
+# ── Autopilot mode — set at runtime by main.py ───────────────────────────────────
+AUTOPILOT: bool = False
+
+
+def set_autopilot(enabled: bool) -> None:
+    """Enable or disable autopilot mode globally."""
+    global AUTOPILOT
+    AUTOPILOT = enabled
+
+
 # ── Patterns that indicate a dangerous command ──────────────────────────────────
 _DANGEROUS_PATTERNS = [
     "rm -rf /",
@@ -67,7 +77,10 @@ def _is_dangerous(command: str) -> bool:
 
 # ── Permission prompt ─────────────────────────────────────────────────────────────
 def ask_permission(command: str) -> bool:
-    """Show a command and ask the user for permission to run it."""
+    """Show a command and ask the user for permission to run it.
+    In AUTOPILOT mode, non-dangerous commands are auto-approved.
+    Dangerous commands ALWAYS require manual CONFIRM even in autopilot.
+    """
     if _is_dangerous(command):
         print()
         print(colorize("┌─ ⚠  DANGEROUS COMMAND DETECTED ──────────────────", Color.RED))
@@ -83,6 +96,15 @@ def ask_permission(command: str) -> bool:
             return True
         print(colorize("  ⏭  Skipped (dangerous command).", Color.DIM))
         return False
+
+    # ── Autopilot: skip prompt entirely ─────────────────────────────────────────
+    if AUTOPILOT:
+        print()
+        print(colorize("┌─ Command to execute ──────────────────────────────", Color.CYAN))
+        print(colorize(f"│  $ {command}", Color.BOLD))
+        print(colorize("└───────────────────────────────────────────────────", Color.CYAN))
+        print(colorize("  🤖 [AUTOPILOT] Auto-approved — running...", Color.GREEN))
+        return True
 
     print()
     print(colorize("┌─ Command to execute ──────────────────────────────", Color.CYAN))

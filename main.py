@@ -257,21 +257,53 @@ def _preview_and_execute(result: dict, label: str, os_name: str, pkg_mgr: str, a
         print(f"  {ui.C.DIM}  {i}. {cmd}{ui.C.RESET}")
 
     # Check if DRY_RUN is active
-    from src.executor import DRY_RUN
+    from src.executor import DRY_RUN, set_autopilot
     if DRY_RUN:
         ui.warn("[DRY-RUN] Showing commands only — nothing will be executed.")
 
+    # ── Execution mode selection ─────────────────────────────────────────────────
+    autopilot_mode = False
     if auto_yes:
         ui.info("--yes flag set: proceeding automatically.")
+        autopilot_mode = True
     elif not DRY_RUN:
-        confirm = input(f"\n  {ui.C.BOLD}Proceed with execution? [y/n] > {ui.C.RESET}").strip().lower()
-        if confirm not in ("y", "yes"):
-            ui.warn("Aborted.")
-            return
+        print(f"\n  {ui.C.BOLD}Choose execution mode:{ui.C.RESET}")
+        print(f"  {ui.C.GREEN}🤖 1. Autopilot{ui.C.RESET}  — Runs all commands automatically. "
+              f"{ui.C.DIM}(no y/n prompts, errors auto-fixed){ui.C.RESET}")
+        print(f"  {ui.C.CYAN}🖐  2. Manual{ui.C.RESET}    — You review and approve each command one by one.")
+        print(f"  {ui.C.YELLOW}✗  3. Cancel{ui.C.RESET}    — Abort this task.\n")
 
+        while True:
+            try:
+                mode = input(f"  {ui.C.BOLD}Mode [1/2/3] > {ui.C.RESET}").strip()
+            except (EOFError, KeyboardInterrupt):
+                ui.warn("Aborted.")
+                return
+            if mode == "1":
+                autopilot_mode = True
+                break
+            elif mode == "2":
+                autopilot_mode = False
+                break
+            elif mode == "3":
+                ui.warn("Aborted.")
+                return
+            else:
+                print("  Please enter 1, 2, or 3.")
+
+    if autopilot_mode:
+        print(f"\n  {ui.C.GREEN}{ui.C.BOLD}🤖 AUTOPILOT MODE ACTIVE{ui.C.RESET}")
+        print(f"  {ui.C.DIM}All commands will run automatically. "
+              f"Dangerous commands will still pause for your confirmation.{ui.C.RESET}\n")
+
+    set_autopilot(autopilot_mode)
     execute_commands(commands, os_name, pkg_mgr)
+
+    # Reset autopilot after this task completes
+    set_autopilot(False)
+
     if not DRY_RUN:
-        ui.success(f"'{label}' sequence complete!")
+        ui.success(f"✅ '{label}' sequence complete!")
 
 
 # ── Interactive main menu ──────────────────────────────────────────────────────
