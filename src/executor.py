@@ -18,6 +18,7 @@ Deadlock fix:
 
 import os
 import sys
+import shlex
 import threading
 import subprocess
 from typing import Tuple
@@ -136,7 +137,14 @@ def run_command(command: str, use_sudo: bool = True) -> Tuple[bool, str, str]:
     Deadlock-safe: stdout is streamed in a background thread while the main
     thread reads stderr, then both are joined before waiting for the process.
     """
-    full_cmd = f"sudo {command}" if use_sudo else command
+    # Always wrap in 'sudo bash -c ...' so that:
+    #   - shell variable assignments (VAR=$(cmd)) work under sudo
+    #   - pipelines, &&, || all work correctly
+    #   - multi-step logic in a single command string is preserved
+    if use_sudo:
+        full_cmd = f"sudo bash -c {shlex.quote(command)}"
+    else:
+        full_cmd = command
 
     if DRY_RUN:
         print(colorize(f"\n  [DRY-RUN] Would run: {full_cmd}", Color.YELLOW))
