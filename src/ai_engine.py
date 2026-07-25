@@ -386,14 +386,16 @@ def fix_error(
         '- "diagnosis": concise explanation of the root cause (1-2 sentences)\n'
         '- "fix_commands": array of shell command strings to fix the issue, then\n'
         '  re-attempt the failed step if needed. Must be non-interactive.\n\n'
-        "=== STRICT RULES ===\n"
-        "- If the error is 'Could not get lock' or mentions package manager lock (e.g., dpkg/lock-frontend, locked by process X):\n"
-        "  You MUST kill the locking process and configure dpkg first. Do NOT just retry apt.\n"
-        "  Generate commands to clean up the lock, e.g.:\n"
+        "- If the error is 'Could not get lock' or mentions package manager lock (e.g., dpkg/lock-frontend, locked by process X, yum.pid):\n"
+        "  You MUST kill the locking process and configure/unlock the package manager first. Do NOT just retry apt/yum.\n"
+        "  Generate commands to clean up the lock, e.g. for APT:\n"
         "    killall -9 apt apt-get dpkg 2>/dev/null || true\n"
-        "    rm -f /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/cache/apt/archives/lock\n"
+        "    rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock\n"
         "    dpkg --configure -a\n"
-        "  Then run 'apt-get update' and re-run the failed command.\n"
+        "  For YUM/DNF:\n"
+        "    killall -9 yum dnf 2>/dev/null || true\n"
+        "    rm -f /var/run/yum.pid /var/run/dnf.pid\n"
+        "  Then run the update command (apt-get update / yum makecache) and re-run the failed command.\n"
         "- NEVER hardcode OS codenames. Use $(. /etc/os-release && echo $VERSION_CODENAME).\n"
         "- If the error is 'Unable to locate package X', do NOT retry the same command.\n"
         "  Instead find the correct repo/source for X on this OS and add it first.\n"
